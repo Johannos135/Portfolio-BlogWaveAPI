@@ -11,46 +11,52 @@ class DBClient {
    * Initializes a connection to MongoDB using environment variables or default values.
    */
   constructor() {
-    this.host = process.env.DB_HOST || "localhost";
-    this.port = process.env.DB_PORT || 27017;
-    this.database = process.env.DB_DATABASE || "blogspot";
-    this.client = new MongoClient(
-      `mongodb://${this.host}:${this.port}/${this.database}`
-    );
+    const host = process.env.DB_HOST || "localhost";
+    const port = process.env.DB_PORT || 27017;
+    const database = process.env.DB_DATABASE || "blogpost";
+
+    const uri = `mongodb://${host}:${port}/${database}`;
+
+    this.client = new MongoClient(uri, { useUnifiedTopology: true });
+    this.db = null;
+
+    this.client.connect((err) => {
+      if (err) {
+        console.error("MongoDB connection error:", err);
+      } else {
+        this.db = this.client.db(database);
+        console.log("Connected to MongoDB");
+      }
+    });
   }
 
   /**
-   * Connects to the database.
-   * @async
-   * @returns {Promise<void>}
+   * Check if the MongoDB client is connected.
+   * @returns {boolean} True if connected, false otherwise.
    */
-  async isAlive() {
-    try {
-      await this.client.connect();
-      return true;
-    } catch (error) {
-      return false;
-    }
+  isAlive() {
+    return !!this.client && !!this.db;
   }
 
   /**
-   * Returns the number of users in the database
-   * @returns {Promise<number>}
+   * Get the number of documents in the users collection.
+   * @returns {Promise<number>} The number of users.
    */
   async nbUsers() {
-    const usersCollection = this.client.db().collection("users");
-    return await usersCollection.countDocuments();
+    if (!this.db) return 0;
+    return this.db.collection("users").countDocuments();
   }
 
   /**
-   * Returns the number of posts in the database
-   * @returns {Promise<number>}
+   * Get the number of documents in the posts collection.
+   * @returns {Promise<number>} The number of posts.
    */
   async nbPosts() {
-    const postsCollection = this.client.db().collection("posts");
-    return await postsCollection.countDocuments();
+    if (!this.db) return 0;
+    return this.db.collection("posts").countDocuments();
   }
 }
 
+// Create and export an instance of DBClient
 const dbClient = new DBClient();
 module.exports = dbClient;
