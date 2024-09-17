@@ -2,6 +2,7 @@
 const { ObjectId } = require("mongodb");
 const dbClient = require("../utils/db");
 const redisClient = require("../utils/redis");
+const marked = require('marked');
 
 /**
  * Controller for managing posts.
@@ -20,12 +21,15 @@ class PostController {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
+    const htmlContent = marked.parse(content);
+
     const postsCollection = dbClient.db.collection("posts");
 
     try {
       const result = await postsCollection.insertOne({
         title,
         content,
+        htmlContent,
         userId: new ObjectId(userId),
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -34,7 +38,7 @@ class PostController {
       // Invalidate cache
       await redisClient.del("posts");
 
-      res.status(201).json({ id: result.insertedId, title, content });
+      res.status(201).json({ id: result.insertedId, title, content, htmlContent });
     } catch (error) {
       res.status(500).json({ error: "Error creating post" });
     }
@@ -77,12 +81,14 @@ class PostController {
       return res.status(400).json({ error: "No update data provided" });
     }
 
+    const htmlContent = marked.parse(content);
+
     const postsCollection = dbClient.db.collection("posts");
 
     try {
       const result = await postsCollection.updateOne(
         { _id: new ObjectId(id) },
-        { $set: { title, content, updatedAt: new Date() } }
+        { $set: { title, content, htmlContent, updatedAt: new Date() } }
       );
 
       if (result.matchedCount === 0) {
