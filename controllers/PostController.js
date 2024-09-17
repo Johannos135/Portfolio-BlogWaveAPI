@@ -2,7 +2,9 @@
 const { ObjectId } = require("mongodb");
 const dbClient = require("../utils/db");
 const redisClient = require("../utils/redis");
-const marked = require('marked');
+const marked = require("marked");
+const fs = require("fs");
+const path = require("path");
 
 /**
  * Controller for managing posts.
@@ -23,6 +25,11 @@ class PostController {
 
     const htmlContent = marked.parse(content);
 
+    let headerImage = null;
+    if (req.file) {
+      headerImage = `/uploads/${req.file.filename}`;
+    }
+
     const postsCollection = dbClient.db.collection("posts");
 
     try {
@@ -30,6 +37,7 @@ class PostController {
         title,
         content,
         htmlContent,
+        headerImage,
         userId: new ObjectId(userId),
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -38,8 +46,17 @@ class PostController {
       // Invalidate cache
       await redisClient.del("posts");
 
-      res.status(201).json({ id: result.insertedId, title, content, htmlContent });
+      res.status(201).json({
+        id: result.insertedId,
+        title,
+        content,
+        htmlContent,
+        headerImage,
+      });
     } catch (error) {
+      if (headerImage) {
+        fs.unlinkSync(path.join(__dirname, "..", headerImage));
+      }
       res.status(500).json({ error: "Error creating post" });
     }
   }
@@ -51,7 +68,12 @@ class PostController {
    * @param {Response} res - The Express response object.
    */
   static async getPosts(req, res) {
-    const cachedPosts = await redisClient.get("posts");
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const cacheKey = `posts:${page}:${limit}`;
+    const cachedPosts = await redisClient.get(cacheKey);
 
     if (cachedPosts) {
       return res.status(200).json(JSON.parse(cachedPosts));
@@ -60,9 +82,20 @@ class PostController {
     const postsCollection = dbClient.db.collection("posts");
 
     try {
-      const posts = await postsCollection.find().toArray();
-      await redisClient.set("posts", JSON.stringify(posts), 3600); // Cache for 1 hour
-      res.status(200).json(posts);
+      const [posts, total] = await Promise.all([
+        postsCollection.find().skip(skip).limit(limit).toArray(),
+        postsCollection.countDocuments(),
+      ]);
+
+      const result = {
+        posts,
+        currentPage: page,
+        totalPages: Math.ceil(total / limit),
+        totalPosts: total,
+      };
+
+      await redisClient.set(cacheKey, JSON.stringify(result), 3600); // Cache for 1 hour
+      res.status(200).json(result);
     } catch (error) {
       res.status(500).json({ error: "Error fetching posts" });
     }
@@ -82,6 +115,11 @@ class PostController {
     }
 
     const htmlContent = marked.parse(content);
+
+    let headerImage = null;
+    if (req.file) {
+      headerImage = `/uploads/${req.file.filename}`;
+    }
 
     const postsCollection = dbClient.db.collection("posts");
 
