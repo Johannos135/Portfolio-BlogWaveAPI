@@ -45,7 +45,7 @@ class ReadingHistoryController {
    * @returns {Promise}
    */
   static async getHistory(req, res) {
-    const userId = req.userId;
+    const { userId } = req.body;
 
     const historyCollection = dbClient.db.collection("readingHistory");
     const postsCollection = dbClient.db.collection("posts");

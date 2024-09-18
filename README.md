@@ -85,7 +85,7 @@ BlogWave is a robust backend infrastructure for a modern blog platform. It empow
 4. Set up environment variables:
    Create a `.env` file in the root directory and add the following:
    ```
-   MONGODB_URI=your_mongodb_connection_string
+   DB_DATABASE=your_mongodb_database_string
    REDIS_URL=your_redis_connection_string
    JWT_SECRET=your_jwt_secret
    ```

@@ -26,8 +26,8 @@ router.post(
 router.put("/posts/:id", authMiddleware, PostController.updatePost);
 router.delete("/posts/:id", authMiddleware, PostController.deletePost);
 
-router.post("/history", authMiddleware, ReadingHistoryController.addToHistory);
-router.get("/history", authMiddleware, ReadingHistoryController.getHistory);
+router.post("/users/reading-history", authMiddleware, ReadingHistoryController.addToHistory);
+router.get("/users/reading-history", authMiddleware, ReadingHistoryController.getHistory);
 
 router.post("/comments", authMiddleware, CommentController.addComment);
 router.get("/posts/:postId/comments", CommentController.getComments);

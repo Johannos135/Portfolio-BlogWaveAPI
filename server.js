@@ -18,3 +18,5 @@ app.use("/", routes);
 app.listen(port, () => {
   console.log(`BlogSpot server running on port ${port}`);
 });
+
+module.exports = app;
